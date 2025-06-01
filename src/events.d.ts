@@ -1,7 +1,6 @@
 /**
  * Event system types for Faseeh plugins
  */
-
 export type EventType = string | symbol
 
 export type Handler<T = any> = (event: T) => void

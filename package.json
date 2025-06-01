@@ -1,6 +1,6 @@
 {
-  "name": "@faseeh/faseeh",
-  "version": "1.0.0",
+  "name": "@faseeh-app/faseeh",
+  "version": "1.0.1",
   "description": "Official type definitions for Faseeh Api",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
