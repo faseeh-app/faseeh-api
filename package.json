@@ -1,0 +1,38 @@
+{
+  "name": "@faseeh/faseeh",
+  "version": "1.0.0",
+  "description": "Official type definitions for Faseeh Api",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "keywords": [
+    "faseeh",
+    "plugin",
+    "sdk",
+    "types",
+    "definitions",
+    "typescript",
+    "api",
+    "development"
+  ],
+  "author": "Faseeh Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/faseeh-app/faseeh-api"
+  },
+  "bugs": {
+    "url": "https://github.com/faseeh-app/faseeh-api/issues"
+  },
+  "homepage": "https://github.com/faseeh-app/faseeh-api#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}
