@@ -1,21 +1,11 @@
 {
   "name": "@faseeh-app/faseeh",
-  "version": "1.0.1",
-  "description": "Official type definitions for Faseeh Api",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "prepublishOnly": "npm run build"
-  },
-  "files": [
-    "dist/**/*"
-  ],
+  "version": "1.0.5",
+  "description": "Official type definitions for Faseeh Plugin API",
+  "types": "faseeh.d.ts",
   "keywords": [
     "faseeh",
     "plugin",
-    "sdk",
     "types",
     "definitions",
     "typescript",
