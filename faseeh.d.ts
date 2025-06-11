@@ -344,6 +344,10 @@ export declare interface FaseehApp {
         	};
     	/** Storage API facade for accessing the main process storage service */
     	storage: IStorage;
+    	plugins: {
+        		getPlugin: (pluginId: string) => unknown;
+        		enabledPlugins: () => Set<string>;
+        	};
 }
 
 /**
@@ -1209,6 +1213,25 @@ export declare type WorkspaceEvents = {
         	};
     	"layout:changed": {
         		newLayout: string;
+        	};
+    	"tab:reload": {
+        		tabId: string;
+        		title: string;
+        	};
+    	"tab:duplicate": {
+        		tabId: string;
+        		title: string;
+        	};
+    	"tab:close": {
+        		tabId: string;
+        		title: string;
+        	};
+    	"tab:close-others": {
+        		exceptTabId: string;
+        		closedCount: number;
+        	};
+    	"tab:close-all": {
+        		closedCount: number;
         	};
 };
 
