@@ -438,13 +438,20 @@ export declare interface FaseehApp {
         		readonly version: string;
         		readonly platform: "win" | "mac" | "linux";
         	};
-    	/** Storage API facade for accessing the main process storage service */
+    	/** Storage interface for managing all data storage operations in Faseeh.
+     	 * This includes database operations and file system management.*/
     	storage: IStorage;
+    	/** Plugin interface for interacting with other plugins in the system.*/
     	plugins: {
         		getPlugin: (pluginId: string) => unknown;
         		enabledPlugins: () => Set<string>;
         	};
+    	/** A utility for detecting languages from text sources, useful for maintaining consistency with Faseeh's language detection.*/
     	languageDetector: LanguageDetector;
+    	/** A registry for adding new content adapters that can process various content sources (e.g., files, URLs) into the structured Faseeh content format.*/
+    	content: IContentAdapterRegistry;
+    	/** A registry for adding new metadata scrapers that can extract structured metadata from various content sources (e.g., files, URLs).*/
+    	metadata: IMetadataScraperRegistry;
 }
 
 /**
@@ -605,6 +612,10 @@ export declare interface IMetadataScraperRegistry {
      	 * ```
      	 */
     	unregister(id: string): void;
+    	
+    	
+    	
+    	
 }
 
 /**

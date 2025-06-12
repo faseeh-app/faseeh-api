@@ -22,7 +22,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/faseeh-app/faseeh-api"
+    "url": "git+https://github.com/faseeh-app/faseeh-api.git"
   },
   "bugs": {
     "url": "https://github.com/faseeh-app/faseeh-api/issues"
