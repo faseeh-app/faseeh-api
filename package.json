@@ -1,6 +1,6 @@
 {
   "name": "@faseeh-app/faseeh",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Official type definitions for Faseeh Plugin API",
   "types": "faseeh.d.ts",
   "scripts": {
