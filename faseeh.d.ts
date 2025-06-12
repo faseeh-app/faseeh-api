@@ -142,7 +142,7 @@ export declare interface ContentAdapterFindCriteria {
  * @public
  */
 export declare type ContentAdapterFunction = (source: ContentAdapterSource, context: {
-    	app: Pick<FaseehApp, "storage" | "plugins">;
+    	app: FaseehApp;
     	originalPath?: string;
     	libraryItemId?: string | null;
 }) => Promise<ContentAdapterResult>;
@@ -442,16 +442,13 @@ export declare interface FaseehApp {
      	 * This includes database operations and file system management.*/
     	storage: IStorage;
     	/** Plugin interface for interacting with other plugins in the system.*/
-    	plugins: {
-        		getPlugin: (pluginId: string) => unknown;
-        		enabledPlugins: () => Set<string>;
-        	};
+    	plugins: Pick<IPluginManager, "getPluginInstance" | "on" | "off" | "emit" | "onAny" | "offAny" | "once">;
     	/** A utility for detecting languages from text sources, useful for maintaining consistency with Faseeh's language detection.*/
-    	languageDetector: LanguageDetector;
+    	languageDetector: ILanguageDetector;
     	/** A registry for adding new content adapters that can process various content sources (e.g., files, URLs) into the structured Faseeh content format.*/
-    	content: IContentAdapterRegistry;
+    	content: Pick<IContentAdapterRegistry, "register" | "unregister">;
     	/** A registry for adding new metadata scrapers that can extract structured metadata from various content sources (e.g., files, URLs).*/
-    	metadata: IMetadataScraperRegistry;
+    	metadata: Pick<IMetadataScraperRegistry, "register" | "unregister">;
 }
 
 /**
@@ -481,6 +478,19 @@ export declare interface IContentAdapterRegistry {
     	
     	
     	
+}
+
+/**
+ * Language detection interface for plugins and services that need to identify the language of a given text source.
+ * @public
+ */
+export declare interface ILanguageDetector {
+    	/**
+     	 * Detects the language of the provided text source.
+     	 * @param source The text source to analyze, can be a string or a file path.
+     	 * @return A promise that resolves to an ISO 639-3 language code (e.g., 'eng' for English) or null if detection fails.
+     	 */
+    	detectLanguage(source: string): Promise<string | null>;
 }
 
 /**
@@ -669,6 +679,65 @@ export declare interface IPlugin {
     	listDataFiles(subDirectory?: string): Promise<string[]>;
     	/** method to clean up all registered listeners */
     	_cleanupListeners(): void;
+}
+
+/**
+ * Plugin Manager interface defining the public API for managing community plugins
+ * Responsible for the complete lifecycle of community plugins including discovery,
+ * loading, dependency resolution, and runtime management.
+ * @public
+ */
+export declare interface IPluginManager extends EventBus<PluginEvents> {
+    	/**
+     	 * Initialize the plugin manager and load enabled plugins
+     	 * This method sets up module resolution, discovers plugins, and loads enabled plugins
+     	 * with proper dependency resolution.
+     	 * @throws Error if initialization fails
+     	 */
+    	initialize(): Promise<void>;
+    	/**
+     	 * Get a plugin instance by its ID
+     	 * @param pluginId The unique identifier of the plugin
+     	 * @returns The plugin instance if found and loaded, null otherwise
+     	 */
+    	getPluginInstance(pluginId: string): IPlugin | null;
+    	/**
+     	 * Check if a plugin is currently enabled
+     	 * @param pluginId The unique identifier of the plugin
+     	 * @returns True if the plugin is enabled, false otherwise
+     	 */
+    	isPluginEnabled(pluginId: string): boolean;
+    	/**
+     	 * Enable a plugin
+     	 * Adds the plugin to the enabled set, saves configuration, and loads the plugin
+     	 * if the plugin manager is already initialized.
+     	 * @param pluginId The unique identifier of the plugin to enable
+     	 * @throws Error if the plugin is not installed
+     	 */
+    	enablePlugin(pluginId: string): Promise<void>;
+    	/**
+     	 * Disable a plugin
+     	 * Removes the plugin from the enabled set, unloads it if active, and saves configuration.
+     	 * May also disable dependent plugins if configured to do so.
+     	 * @param pluginId The unique identifier of the plugin to disable
+     	 */
+    	disablePlugin(pluginId: string): Promise<void>;
+    	/**
+     	 * List all discovered plugins with their current status
+     	 * @returns Array of plugin information including manifest, enabled/loaded status, and any errors
+     	 */
+    	listPlugins(): PluginInfo[];
+    	/**
+     	 * Shutdown the plugin manager and unload all active plugins
+     	 * Cleanly unloads all plugins and clears internal state.
+     	 */
+    	shutdown(): Promise<void>;
+    	/**
+     	 * Refresh plugin discovery
+     	 * Re-scans the plugins directory to discover newly installed plugins.
+     	 * Useful for development and dynamic plugin installation.
+     	 */
+    	refreshPlugins(): Promise<void>;
 }
 
 /**
@@ -1198,19 +1267,6 @@ export declare interface IStorage extends EventBus<StorageEvents> {
 }
 
 /**
- * Language detection interface for plugins and services that need to identify the language of a given text source.
- * @public
- */
-export declare interface LanguageDetector {
-    	/**
-     	 * Detects the language of the provided text source.
-     	 * @param source The text source to analyze, can be a string or a file path.
-     	 * @return A promise that resolves to an ISO 639-3 language code (e.g., 'eng' for English) or null if detection fails.
-     	 */
-    	detectLanguage(source: string): Promise<string | null>;
-}
-
-/**
  * @public
  */
 export declare interface LibraryItem {
@@ -1282,7 +1338,7 @@ export declare interface MetadataScraperFindCriteria {
  * @public
  */
 export declare type MetadataScraperFunction = (source: MetadataScraperSource, context: {
-    	app: Pick<FaseehApp, "storage" | "plugins">;
+    	app: FaseehApp;
     	originalPath?: string;
     	sourceUrl?: string;
 }) => Promise<MetadataScraperResult>;
