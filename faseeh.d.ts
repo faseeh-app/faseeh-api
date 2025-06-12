@@ -19,6 +19,14 @@ export declare interface AppSetting {
 }
 
 /**
+ * @public
+ */
+export declare interface AssetDetail {
+    	format: string;
+    	content: Buffer | string;
+}
+
+/**
  * Represents an audio embed
  * @public
  */
@@ -103,6 +111,87 @@ export declare interface ContainerBlock extends BaseBlock {
     	style?: string;
     	children: ContentBlock[];
 }
+
+/**
+ * @public
+ */
+export declare abstract class ContentAdapter {
+    	private readonly info;
+    	constructor(info: ContentAdapterInfo);
+    	getInfo(): ContentAdapterInfo;
+    	abstract adapt: ContentAdapterFunction;
+}
+
+/**
+ * @public
+ */
+export declare type ContentAdapterClass = new (info: ContentAdapterInfo) => ContentAdapter;
+
+/**
+ * @public
+ */
+export declare interface ContentAdapterFindCriteria {
+    	source: ContentAdapterSource;
+    	mimeType?: string;
+    	fileExtension?: string;
+    	sourceUrl?: string;
+    	isPastedText?: boolean;
+}
+
+/**
+ * @public
+ */
+export declare type ContentAdapterFunction = (source: ContentAdapterSource, context: {
+    	app: Pick<FaseehApp, "storage" | "plugins">;
+    	originalPath?: string;
+    	libraryItemId?: string | null;
+}) => Promise<ContentAdapterResult>;
+
+/**
+ * @public
+ */
+export declare interface ContentAdapterInfo {
+    	id: string;
+    	name: string;
+    	supportedMimeTypes: string[];
+    	supportedExtensions: string[];
+    	urlPatterns?: string[] | RegExp[];
+    	canHandlePastedText?: boolean;
+    	priority?: number;
+    	description?: string;
+}
+
+/**
+ * @public
+ */
+export declare type ContentAdapterRegistration = ContentAdapterInfo & ({
+    	adapter: ContentAdapterFunction;
+    	adapterClass?: undefined;
+} | {
+    	adapterClass: ContentAdapterClass;
+    	adapter?: undefined;
+});
+
+/**
+ * @public
+ */
+export declare interface ContentAdapterResult {
+    	libraryItemData: Partial<LibraryItem>;
+    	contentDocument?: ContentDocument;
+    	documentAssets?: DocumentAssets;
+    	associatedFiles?: {
+        		type: string;
+        		format?: string;
+        		language?: string;
+        		filename?: string;
+        		content: string | Buffer;
+        	}[];
+}
+
+/**
+ * @public
+ */
+export declare type ContentAdapterSource = string | Buffer | File;
 
 /**
  * Union type for all possible content blocks
@@ -260,6 +349,13 @@ export declare interface CreateVocabularySourceDTO {
 /**
  * @public
  */
+export declare interface DocumentAssets {
+    	[assetId: string]: AssetDetail;
+}
+
+/**
+ * @public
+ */
 export declare interface EmbeddedAsset {
     	id: string;
     	libraryItemId: string;
@@ -348,12 +444,37 @@ export declare interface FaseehApp {
         		getPlugin: (pluginId: string) => unknown;
         		enabledPlugins: () => Set<string>;
         	};
+    	languageDetector: LanguageDetector;
 }
 
 /**
  * @public
  */
 export declare type Handler<T = any> = (event: T) => void;
+
+/**
+ * Content Adapter Registry for managing the lifecycle of Faseeh content adapters.
+ * @public
+ */
+export declare interface IContentAdapterRegistry {
+    	/**
+     	 * Registers a new content adapter.
+     	 *
+     	 * @param registration - The registration details of the content adapter.
+     	 * @throws {Error} If an adapter with the same ID is already registered.
+     	 */
+    	register(registration: ContentAdapterRegistration): void;
+    	/**
+     	 * Unregisters a content adapter by its unique identifier.
+     	 *
+     	 * @param id - The unique identifier of the content adapter to unregister.
+     	 * @throws {Error} If no adapter with the specified ID is registered.
+     	 */
+    	unregister(id: string): void;
+    	
+    	
+    	
+}
 
 /**
  * Represents a single text annotation on an image
@@ -378,6 +499,112 @@ export declare interface ImageBlock extends BaseBlock {
     	externalSrc?: string;
     	alt?: string;
     	caption?: string;
+}
+
+/**
+ * Registry interface for managing metadata scrapers in the Faseeh application.
+ *
+ * The metadata scraper registry provides a centralized system for:
+ * - Registering and managing metadata extraction tools
+ * - Automatically selecting the best scraper for different content sources
+ * - Extracting structured metadata from URLs, files, and other sources
+ *
+ * The registry uses a sophisticated scoring algorithm to match sources with scrapers
+ * based on MIME types, file extensions, URL patterns, and capability flags.
+ *
+ * @example
+ * ```typescript
+ * // Basic usage
+ * const registry = new MetadataScraperRegistry(app)
+ *
+ * // Register a scraper
+ * registry.register({
+ *   id: 'youtube-scraper',
+ *   name: 'YouTube Metadata Scraper',
+ *   supportedMimeTypes: [],
+ *   supportedExtensions: [],
+ *   urlPatterns: ['https://(?:www\.)?youtube\.com/watch'],
+ *   canHandleUrls: true,
+ *   priority: 10,
+ *   scraper: async (source, context) => {
+ *     // Implementation here
+ *     return { type: 'video', name: 'Video Title', language: 'en', dynamicMetadata: {} }
+ *   }
+ * })
+ *
+ * // Extract metadata
+ * const result = await registry.scrapeMetadata('https://youtube.com/watch?v=example')
+ * if (result.success) {
+ *   console.log('Title:', result.metadata.name)
+ *   console.log('Language:', result.metadata.language)
+ *   console.log('Type:', result.metadata.type)
+ * }
+ * ```
+ *
+ * @public
+ */
+export declare interface IMetadataScraperRegistry {
+    	/**
+     	 * Registers a new metadata scraper with the registry.
+     	 *
+     	 * The scraper will be available for automatic selection when processing sources
+     	 * that match its supported criteria (MIME types, extensions, URL patterns).
+     	 *
+     	 * @param registration - Complete scraper registration including metadata and implementation
+     	 *
+     	 * @throws {Error} When a scraper with the same ID is already registered
+     	 *
+     	 * @example
+     	 * ```typescript
+     	 * // Register a functional scraper
+     	 * registry.register({
+     	 *   id: 'pdf-scraper',
+     	 *   name: 'PDF Metadata Scraper',
+     	 *   supportedMimeTypes: ['application/pdf'],
+     	 *   supportedExtensions: ['pdf'],
+     	 *   canHandleLocalFiles: true,
+     	 *   priority: 8,
+     	 *   scraper: async (source, context) => {
+     	 *     // PDF processing logic
+     	 *     return {
+     	 *       type: 'document',
+     	 *       name: 'Extracted PDF Title',
+     	 *       language: 'en',
+     	 *       dynamicMetadata: { pageCount: 42, author: 'John Doe' }
+     	 *     }
+     	 *   }
+     	 * })
+     	 *
+     	 * // Register a class-based scraper
+     	 * registry.register({
+     	 *   id: 'custom-scraper',
+     	 *   name: 'Custom Scraper',
+     	 *   supportedMimeTypes: ['text/custom'],
+     	 *   supportedExtensions: ['custom'],
+     	 *   canHandleLocalFiles: true,
+     	 *   priority: 5,
+     	 *   scraperClass: CustomScraperClass
+     	 * })
+     	 * ```
+     	 */
+    	register(registration: MetadataScraperRegistration): void;
+    	/**
+     	 * Removes a registered metadata scraper from the registry.
+     	 *
+     	 * After unregistration, the scraper will no longer be considered
+     	 * for automatic selection when processing sources.
+     	 *
+     	 * @param id - Unique identifier of the scraper to remove
+     	 *
+     	 * @throws {Error} When no scraper with the specified ID is found
+     	 *
+     	 * @example
+     	 * ```typescript
+     	 * // Unregister a scraper (useful for plugin cleanup)
+     	 * registry.unregister('youtube-scraper')
+     	 * ```
+     	 */
+    	unregister(id: string): void;
 }
 
 /**
@@ -960,12 +1187,26 @@ export declare interface IStorage extends EventBus<StorageEvents> {
 }
 
 /**
+ * Language detection interface for plugins and services that need to identify the language of a given text source.
+ * @public
+ */
+export declare interface LanguageDetector {
+    	/**
+     	 * Detects the language of the provided text source.
+     	 * @param source The text source to analyze, can be a string or a file path.
+     	 * @return A promise that resolves to an ISO 639-3 language code (e.g., 'eng' for English) or null if detection fails.
+     	 */
+    	detectLanguage(source: string): Promise<string | null>;
+}
+
+/**
  * @public
  */
 export declare interface LibraryItem {
     	id: string;
     	type: string;
     	name?: string;
+    	thumbnail?: File;
     	language?: string;
     	sourceUri?: string;
     	storagePath?: string;
@@ -977,6 +1218,105 @@ export declare interface LibraryItem {
     	createdAt: Date;
     	updatedAt: Date;
 }
+
+/**
+ * Abstract class that provides the base functionality for metadata scrapers.
+ * Implementations should define the specific scraping logic.
+ * @abstract
+ * @public
+ */
+export declare abstract class MetadataScraper {
+    	private readonly info;
+    	constructor(info: MetadataScraperInfo);
+    	getInfo(): MetadataScraperInfo;
+    	abstract scrape: MetadataScraperFunction;
+}
+
+/**
+ * @public
+ */
+export declare type MetadataScraperClass = new (info: MetadataScraperInfo) => MetadataScraper;
+
+/**
+ * @public
+ */
+export declare interface MetadataScraperFindCriteria {
+    	source: MetadataScraperSource;
+    	mimeType?: string;
+    	fileExtension?: string;
+    	sourceUrl?: string;
+    	isLocalFile?: boolean;
+}
+
+/**
+ * Criteria used to find the most suitable metadata scraper for a given source.
+ * This interface is used internally by the registry to match sources with appropriate scrapers.
+ *
+ * @public
+ */
+export declare interface MetadataScraperFindCriteria {
+    	/** The source data to be processed */
+    	source: MetadataScraperSource;
+    	/** MIME type of the source (e.g., 'video/mp4', 'application/pdf') */
+    	mimeType?: string;
+    	/** File extension without the dot (e.g., 'pdf', 'mp4', 'txt') */
+    	fileExtension?: string;
+    	/** Full URL if the source is a web resource */
+    	sourceUrl?: string;
+    	/** Whether the source is a local file path or File object */
+    	isLocalFile?: boolean;
+}
+
+/**
+ * @public
+ */
+export declare type MetadataScraperFunction = (source: MetadataScraperSource, context: {
+    	app: Pick<FaseehApp, "storage" | "plugins">;
+    	originalPath?: string;
+    	sourceUrl?: string;
+}) => Promise<MetadataScraperResult>;
+
+/**
+ * @public
+ */
+export declare interface MetadataScraperInfo {
+    	id: string;
+    	name: string;
+    	supportedMimeTypes: string[];
+    	supportedExtensions: string[];
+    	urlPatterns?: string[] | RegExp[];
+    	canHandleLocalFiles?: boolean;
+    	canHandleUrls?: boolean;
+    	priority?: number;
+    	description?: string;
+}
+
+/**
+ * @public
+ */
+export declare type MetadataScraperRegistration = MetadataScraperInfo & ({
+    	scraper: MetadataScraperFunction;
+    	scraperClass?: undefined;
+} | {
+    	scraperClass: MetadataScraperClass;
+    	scraper?: undefined;
+});
+
+/**
+ * @public
+ */
+export declare interface MetadataScraperResult {
+    	type?: string;
+    	name?: string;
+    	thumbnail?: File;
+    	language?: string;
+    	dynamicMetadata: Record<string, any>;
+}
+
+/**
+ * @public
+ */
+export declare type MetadataScraperSource = string | File;
 
 /**
  * @public
