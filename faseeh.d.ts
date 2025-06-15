@@ -70,6 +70,78 @@ export declare abstract class BasePlugin implements IPlugin {
 }
 
 /**
+ * Abstract base class for subtitle generation engines.
+ *
+ * This class provides a common interface for different subtitle generation implementations
+ * (e.g., Whisper, cloud-based services, etc.). All subtitle engines must extend this class
+ * and implement the required abstract methods.
+ *
+ * @abstract
+ * @example
+ * ```typescript
+ * class WhisperEngine extends BaseSubtitleEngine {
+ *   constructor() {
+ *     super({
+ *       name: "Whisper",
+ *       version: "1.0.0",
+ *       supportedFormats: ["mp3", "wav", "mp4"]
+ *     });
+ *   }
+ *
+ *   async generateSubtitles(source, languages, options) {
+ *     // Implementation specific to Whisper
+ *   }
+ * }
+ * ```
+ */
+export declare abstract class BaseSubtitleEngine {
+    	readonly info: SubtitleEngineInfo;
+    	/**
+     	 * Constructs a new instance of a BaseSubtitleEngine.
+     	 * @param {SubtitleEngineInfo} info - Metadata about the subtitle engine's capabilities.
+     	 */
+    	constructor(info: SubtitleEngineInfo);
+    	/**
+     	 * Generates subtitles for the given source. MUST be implemented by subclasses.
+     	 * @abstract
+     	 * @param {SubtitleSourceData} source - The audio/video data or path/URL.
+     	 * @param {string[]} languages - Language hints (target languages). May only support one target lang depending on engine.
+     	 * @param {Record<string, any>} [options] - Engine-specific options (e.g., quality settings, task type).
+     	 * @returns {Promise<SubtitleGenerationResult>} A promise resolving to the structured subtitle result.
+     	 */
+    	abstract generateSubtitles(source: SubtitleSourceData, languages: string[], // May only support one target lang depending on engine
+    	options?: Record<string, any>): Promise<SubtitleGenerationResult>;
+    	/**
+     	 * Optional method to perform any asynchronous initialization tasks required by the engine.
+     	 * Subclasses can override this method to set up resources or connections.
+     	 * @returns {Promise<void>} A promise that resolves when initialization is complete.
+     	 * @example
+     	 * ```typescript
+     	 * async initialize() {
+     	 *   // Perform setup tasks like loading models or connecting to a service
+     	 *   await this.loadModel();
+     	 *   console.log(`${this.info.name} initialized.`);
+     	 * }
+     	 * ```
+     	 */
+    	initialize(): Promise<void>;
+    	/**
+     	 * Optional method to cleanly shut down the engine and release any resources.
+     	 * Subclasses can override this method to perform cleanup tasks.
+     	 * @returns {Promise<void>} A promise that resolves when shutdown is complete.
+     	 * @example
+     	 * ```typescript
+     	 * async shutdown() {
+     	 *   // Perform cleanup tasks like releasing models or closing connections
+     	 *   await this.releaseModel();
+     	 *   console.log(`${this.info.name} has been shut down.`);
+     	 * }
+     	 * ```
+     	 */
+    	shutdown(): Promise<void>;
+}
+
+/**
  * Represents a positional bounding box
  * @public
  */
@@ -1462,6 +1534,155 @@ export declare type StorageEvents = {
         		mediaId: string;
         	};
 };
+
+/**
+ * Configuration interface for subtitle generation engines.
+ *
+ * Defines the capabilities, requirements, and metadata for different subtitle
+ * generation services, including local plugins and cloud-based services.
+ *
+ * @interface SubtitleEngineInfo
+ * @example
+ * ```typescript
+ * const engine: SubtitleEngineInfo = {
+ *   id: "faseeh-cloud-stt",
+ *   name: "Faseeh Cloud",
+ *   supportedLanguages: ["en", "ar", "fr"],
+ *   inputType: ["audio", "video"],
+ *   description: "Cloud-based speech-to-text service",
+ *   requiresApiKey: true,
+ *   isCloudService: true
+ * };
+ * ```
+ */
+export declare interface SubtitleEngineInfo {
+    	/**
+     	 * Unique identifier for the subtitle engine.
+     	 * Should follow kebab-case naming convention.
+     	 * @example "faseeh-cloud-stt", "plugin-local-whisper"
+     	 */
+    	id: string;
+    	/**
+     	 * Human-readable display name for the engine.
+     	 * Used in UI components and user-facing documentation.
+     	 * @example "Faseeh Cloud", "Local Whisper (Medium)"
+     	 */
+    	name: string;
+    	/**
+     	 * Array of supported language codes in ISO 639 format.
+     	 * Indicates which languages this engine can transcribe.
+     	 * @example ["en", "ar", "fr", "de"]
+     	 */
+    	supportedLanguages: string[];
+    	/**
+     	 * Types of input sources the engine can process.
+     	 * - `audio`: Audio files (mp3, wav, etc.)
+     	 * - `video`: Video files (mp4, avi, etc.)
+     	 * - `url`: Remote URLs or streaming sources
+     	 */
+    	inputType: ("audio" | "video" | "url")[];
+    	/**
+     	 * Optional detailed description of the engine.
+     	 * Should include information about the underlying model, service capabilities,
+     	 * or any special features.
+     	 * @optional
+     	 */
+    	description?: string;
+    	/**
+     	 * Indicates whether this engine requires an API key for operation.
+     	 * True for cloud services or third-party APIs that need authentication.
+     	 * @optional
+     	 * @default false
+     	 */
+    	requiresApiKey?: boolean;
+    	/**
+     	 * Indicates whether this engine is a cloud-based service.
+     	 * True for engines that process data remotely, false for local engines.
+     	 * @optional
+     	 * @default false
+     	 */
+    	isCloudService?: boolean;
+}
+
+/**
+ * Represents the result of a subtitle generation operation.
+ *
+ * This interface encapsulates all the data returned after processing
+ * audio/video content to generate subtitles, including the detected
+ * language, subtitle segments, and metadata about the generation engine.
+ *
+ * @interface SubtitleGenerationResult * @example
+ * ```typescript
+ * const result: SubtitleGenerationResult = {
+ *   language: 'en',
+ *   segments: [
+ *     {
+ *       startTimeMs: 0,
+ *       endTimeMs: 3500,
+ *       text: 'Hello, world!',
+ *       confidence: 0.95
+ *     }
+ *   ],
+ *   engineInfo: {
+ *     id: 'whisper-1',
+ *     name: 'OpenAI Whisper',
+ *     model: 'whisper-large-v3'
+ *   },
+ *   raw: {
+ *     text: '1\n00:00:00,000 --> 00:00:03,500\nHello, world!\n\n',
+ *     format: 'srt'
+ *   }
+ * };
+ * ```
+ */
+export declare interface SubtitleGenerationResult {
+    	language: string;
+    	segments: SubtitleSegment[];
+    	engineInfo?: {
+        		id: string;
+        		name: string;
+        		model?: string;
+        	};
+    	/**
+     	 * Optional raw subtitle content in a standard format.
+     	 * If provided, contains the subtitles as a formatted string ready for file output.
+     	 */
+    	raw?: {
+        		text: string;
+        		format: "srt" | "vtt" | "ttml" | "scc" | "stl";
+        	};
+}
+
+/**
+ * Represents a single subtitle segment with timing information and text content.
+ *
+ * @interface SubtitleSegment
+ * @example
+ * ```typescript
+ * const segment: SubtitleSegment = {
+ *   startTimeMs: 1000,
+ *   endTimeMs: 3000,
+ *   text: "Hello, world!",
+ *   confidence: 0.95
+ * };
+ * ```
+ * @public
+ */
+export declare interface SubtitleSegment {
+    	/** The start time of the subtitle segment in milliseconds */
+    	startTimeMs: number;
+    	/** The end time of the subtitle segment in milliseconds */
+    	endTimeMs: number;
+    	/** The text content displayed during this subtitle segment */
+    	text: string;
+    	/**
+     	 * Optional confidence score indicating the accuracy of the subtitle text.
+     	 * @remarks Typically ranges from 0.0 (no confidence) to 1.0 (full confidence)
+     	 */
+    	confidence?: number;
+}
+
+export declare type SubtitleSourceData = Buffer | string;
 
 /**
  * @public
